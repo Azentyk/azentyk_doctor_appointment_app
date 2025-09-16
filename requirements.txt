@@ -25,4 +25,4 @@ mysql-connector-python
 flask
 Flask-Session
 pysqlite3-binary
-
+pymongo[srv]==3.11
