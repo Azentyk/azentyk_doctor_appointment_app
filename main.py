@@ -10,7 +10,6 @@ from db_utils import init_db
 from chat_routes import chat_bp
 from authentication import auth_bp
 
-
 def create_app():
     # Initialize Flask app
     app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -51,5 +50,6 @@ app = create_app()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # Azure sets PORT env var
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
