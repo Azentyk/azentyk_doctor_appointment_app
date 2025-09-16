@@ -7,8 +7,9 @@ import logging
 from typing import Optional, List, Dict,Tuple
 
 # Initialize MongoDB client
-client = MongoClient("mongodb://localhost:27017/")
+# client = MongoClient("mongodb://localhost:27017/")
 # client = MongoClient("mongodb+srv://azentyk:azentyk123@cluster0.b9aaq47.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+client = MongoClient("mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@",tls=True, tlsAllowInvalidCertificates=False)
 db = client["patient_db"]
 
 # Collections
@@ -226,4 +227,5 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
     elif result.matched_count > 0:
         return {"success": False, "message": f"Appointment {appointment_id} already has status '{new_status}'"}
     else:
+
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
