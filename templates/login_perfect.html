@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Our Company</title>
+    <style>
+        /* General Body Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-color: #f4f7fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: url("https://img.freepik.com/premium-photo/modern-technology-background-generative-ai_155807-2609.jpg"); /* AI GIF Background */
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+        }
+
+        /* Login Container Styling */
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.9); /* White background with some transparency */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-input:focus {
+            border-color: #0078D7;
+            outline: none;
+        }
+
+        .button {
+            text-decoration: none;
+            background: #0078D7;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            display: inline-block;
+            font-size: 1.2em;
+        }
+
+        .button:hover {
+            background: #005BBB;
+        }
+
+        .footer-text {
+            color: #555;
+        }
+
+        .footer-text a {
+            color: #0078D7;
+            text-decoration: none;
+        }
+
+        .footer-text a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h2>Login</h2>
+
+        <!-- Display message if any -->
+        {% if message %}
+        <p style="color: red;">{{ message }}</p>
+        {% endif %}
+
+        <!-- Login Form -->
+        <form method="post" action="/login">
+            <input type="text" name="username" class="form-input" placeholder="Username" required><br>
+            <input type="password" name="password" class="form-input" placeholder="Password" required><br>
+            <button type="submit" class="button">Login</button>
+        </form>
+
+        <p class="footer-text">Don't have an account? <a href="/register">Register</a></p>
+    </div>
+</body>
+
+</html>
