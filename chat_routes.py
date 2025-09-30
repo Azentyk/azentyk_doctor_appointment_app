@@ -92,6 +92,17 @@ def chat(session_id):
         try:
             patient_data = doctor_appointment_patient_data_extraction_prompt(llm).invoke(str(last_message['messages']))
             logger.debug(f"[{session_id}] Extracted patient_data: {patient_data}")
+
+            if not isinstance(patient_data, dict):
+                logger.error(f"[{session_id}] patient_data is not a dict: {patient_data}")
+                return jsonify({"response": "Could not extract appointment details. Please provide your name, email, and preferred date/time."})
+
+            required_fields = ["username", "mail", "appointment_booking_date", "appointment_booking_time", "hospital_name"]
+            missing = [f for f in required_fields if f not in patient_data or not patient_data[f]]
+            if missing:
+                logger.error(f"[{session_id}] Missing fields in patient_data: {missing} | {patient_data}")
+                return jsonify({"response": f"Missing fields: {', '.join(missing)}. Please provide them again."})
+    
             patient_data['appointment_status'] = 'Pending'
             appointment_id = f"APT-{patient_data['username'][:4]}-{int(time.time())}{random.randint(1000,9999)}"
             print("Appointment ID:", appointment_id)
@@ -191,3 +202,4 @@ def check_session():
         logger.warning("Session check attempted without session_id")
 
     return jsonify({"valid": valid})
+
