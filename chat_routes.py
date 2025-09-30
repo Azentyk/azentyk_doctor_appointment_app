@@ -1,5 +1,4 @@
 # chat_routes.py (Flask version for Azure deployment)
-
 from flask import Blueprint, request, session, render_template, redirect, url_for, jsonify
 from datetime import datetime
 import logging
@@ -202,4 +201,5 @@ def check_session():
         logger.warning("Session check attempted without session_id")
 
     return jsonify({"valid": valid})
+
 
