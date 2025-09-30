@@ -8,11 +8,18 @@ from agent import get_or_create_agent_for_user, remove_agent
 from db_utils import (
     patient_each_chat_table_collection,
     push_patient_information_data_to_db,
-    push_patient_chat_data_to_db,update_appointment_status
+    push_patient_chat_data_to_db,
+    update_appointment_status,
+    get_email_from_session_id,
+    get_user_contact_info,
 )
 from session import update_session_record
 from patient_bot_conversational import *
-from prompt import doctor_appointment_patient_data_extraction_prompt,doctor_appointment_patient_data_extraction__cancel_prompt,doctor_appointment_patient_data_extraction__rescheduled_prompt
+from prompt import (
+    doctor_appointment_patient_data_extraction_prompt,
+    doctor_appointment_patient_data_extraction__cancel_prompt,
+    doctor_appointment_patient_data_extraction__rescheduled_prompt,
+)
 
 chat_bp = Blueprint("chat", __name__)
 logger = logging.getLogger(__name__)
@@ -89,24 +96,91 @@ def chat(session_id):
         'processing your request','will proceed to finalize the booking','scheduling is in progress']):
         
         try:
+            # Extract patient data from the LLM extractor
             patient_data = doctor_appointment_patient_data_extraction_prompt(llm).invoke(str(last_message['messages']))
-            logger.debug(f"[{session_id}] Extracted patient_data: {patient_data}")
+            logger.debug(f"[{session_id}] Extracted patient_data raw: {patient_data}")
 
+            # 1) Ensure extractor returned a dict
             if not isinstance(patient_data, dict):
                 logger.error(f"[{session_id}] patient_data is not a dict: {patient_data}")
                 return jsonify({"response": "Could not extract appointment details. Please provide your name, email, and preferred date/time."})
 
+            # 2) Resolve authenticated email (cookie session preferred, fallback to header/session mapping)
+            auth_email = session.get("user")
+            if not auth_email:
+                sid = session.get("session_id") or request.headers.get("session_id") or request.headers.get("Session-Id")
+                if sid:
+                    try:
+                        auth_email = get_email_from_session_id(sid)
+                    except Exception:
+                        logger.exception(f"[{session_id}] Failed to resolve email from sid {sid}")
+            logger.debug(f"[{session_id}] auth_email resolved as: {auth_email}")
+
+            # 3) Helper to detect "use existing" style placeholders
+            def _looks_like_use_existing(val):
+                if not val or not isinstance(val, str):
+                    return False
+                lowered = val.strip().lower()
+                triggers = [
+                    "use existing", "use my existing", "existing email", "use the existing email",
+                    "same as my account", "same email", "use my account email", "use same email",
+                    "use existing one", "existing", "my account email", "yes"
+                ]
+                return any(t in lowered for t in triggers)
+
+            # 4) Normalize and fill 'mail' (accept 'email' too)
+            mail_val = patient_data.get("mail") or patient_data.get("email")
+            if _looks_like_use_existing(mail_val):
+                if auth_email:
+                    logger.debug(f"[{session_id}] Replacing placeholder mail '{mail_val}' with auth email '{auth_email}'")
+                    patient_data['mail'] = auth_email
+                else:
+                    logger.warning(f"[{session_id}] Mail placeholder present but no authenticated email to fallback to: {mail_val}")
+                    return jsonify({"response": "You asked to use your existing email but I couldn't find your account. Please provide your email."})
+            else:
+                if mail_val and "mail" not in patient_data:
+                    patient_data['mail'] = mail_val
+
+            # 5) Fill username and phone from contact info if missing or placeholder
+            username_val = patient_data.get("username")
+            if _looks_like_use_existing(username_val) or not username_val:
+                if auth_email:
+                    try:
+                        contact_info, _ = get_user_contact_info(auth_email)
+                        if contact_info and isinstance(contact_info, list) and len(contact_info) > 0:
+                            firstname = contact_info[0].get("firstname")
+                            phone_from_contact = contact_info[0].get("phone")
+                            if firstname:
+                                logger.debug(f"[{session_id}] Filling missing username from contact info: {firstname}")
+                                patient_data['username'] = firstname
+                            # If phone not provided by extractor, fill it too
+                            if 'phone_number' not in patient_data or not patient_data.get('phone_number'):
+                                if phone_from_contact:
+                                    patient_data['phone_number'] = phone_from_contact
+                    except Exception:
+                        logger.exception(f"[{session_id}] Failed to fetch contact info for {auth_email}")
+
+            # Final fallbacks
+            if not patient_data.get('username'):
+                patient_data['username'] = "User"
+            if not patient_data.get('mail'):
+                logger.error(f"[{session_id}] Mail still missing after fallbacks: {patient_data}")
+                return jsonify({"response": "Missing email. Please provide your email or confirm you want to use your account email."})
+
+            # 6) Now validate required fields (after fallbacks)
             required_fields = ["username", "mail", "appointment_booking_date", "appointment_booking_time", "hospital_name"]
             missing = [f for f in required_fields if f not in patient_data or not patient_data[f]]
             if missing:
-                logger.error(f"[{session_id}] Missing fields in patient_data: {missing} | {patient_data}")
+                logger.error(f"[{session_id}] Missing fields in patient_data after fallbacks: {missing} | {patient_data}")
                 return jsonify({"response": f"Missing fields: {', '.join(missing)}. Please provide them again."})
-    
+
+            # 7) All good — create appointment doc and persist
             patient_data['appointment_status'] = 'Pending'
             appointment_id = f"APT-{patient_data['username'][:4]}-{int(time.time())}{random.randint(1000,9999)}"
-            print("Appointment ID:", appointment_id)
-            # Insert appointment_id at the beginning
+            logger.debug(f"[{session_id}] Generated appointment_id: {appointment_id}")
+
             appointment = {"appointment_id": appointment_id, **patient_data}
+            logger.info(f"[{session_id}] Final appointment doc to insert: {appointment}")
 
             push_patient_information_data_to_db(appointment)
             chat_df = {'patient_name': patient_data['username'], 'chat_history': str(last_message['messages'])}
@@ -119,10 +193,12 @@ def chat(session_id):
 
             logger.info(f"[{session_id}] Appointment booking initiated for patient={patient_data['username']}")
         except Exception as e:
-            logger.error(f"Error while booking appointment for {session_id} | {e}")
+            logger.exception(f"Error while booking appointment for {session_id} | {e}")
             return jsonify({"response": "We faced an issue while processing your appointment. Please try again."})
 
-        return jsonify({"response": "Thank you! We are currently processing your doctor appointment request. The scheduling is in progress. You will receive a confirmation shortly."})
+        # Return friendly confirmation (include username)
+        username = patient_data.get("username", "User")
+        return jsonify({"response": f"Thank you {username}! We are currently processing your doctor appointment request. The scheduling is in progress. You will receive a confirmation shortly."})
     
 
 
@@ -201,5 +277,3 @@ def check_session():
         logger.warning("Session check attempted without session_id")
 
     return jsonify({"valid": valid})
-
-
