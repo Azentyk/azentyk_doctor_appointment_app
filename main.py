@@ -9,6 +9,7 @@ from logger import setup_logging
 from db_utils import init_db
 from chat_routes import chat_bp
 from authentication import auth_bp
+from appointments import appointments_bp   # ⬅️ added import
 
 def create_app():
     # Initialize Flask app
@@ -32,6 +33,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(chat_bp)
+    app.register_blueprint(appointments_bp, url_prefix="/api")  # ⬅️ added line
 
     # Default route (renders index.html with session_id injected)
     @app.route("/")
@@ -50,6 +52,7 @@ app = create_app()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # Azure sets PORT env var
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
