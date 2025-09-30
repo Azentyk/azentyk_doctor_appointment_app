@@ -203,7 +203,20 @@ def patient_each_chat_table_collection(message_text: str):
     except Exception as e:
         logger.error(f"Error inserting chat message: {e}")
         return None
-    
+
+def get_user_appointments_by_email(email: str) -> List[Dict]:
+    """Return list of appointment dicts for the given email (mail column)."""
+    try:
+        cursor = patient_information_details_table_collection.find({"mail": email})
+        items = []
+        for doc in cursor:
+            doc.pop("_id", None)  # remove _id so JSON works
+            items.append(doc)
+        logger.info(f"Fetched {len(items)} appointments for {email}")
+        return items
+    except Exception as e:
+        logger.exception(f"Error fetching appointments for {email}: {e}")
+        return []
 
 def update_appointment_status(appointment_id: str, new_status: str) -> dict:
     """
@@ -229,3 +242,4 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
     else:
 
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
+
