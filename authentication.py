@@ -7,7 +7,9 @@ from db_utils import (
     authenticate_user,
     register_user,
     load_users_df,
-    get_user_contact_info
+    get_user_contact_info,
+    save_session_mapping,     # NEW
+    delete_session_mapping    # NEW
 )
 from logger import setup_logging
 
@@ -113,6 +115,12 @@ def login_page():
         session["user"] = email
         session["session_id"] = session_id
 
+        # Save server-side mapping (non-blocking)
+        try:
+            save_session_mapping(session_id, email)
+        except Exception:
+            logger.exception("Failed to save session mapping on login")
+
         # MERGED LOGIC FROM OLD authentication.py — START
         # Create and update session records (wrapped in try/except to avoid breaking auth flow)
         try:
@@ -194,6 +202,12 @@ def google_login():
     session["user"] = email
     session["session_id"] = session_id
 
+    # Save server-side mapping (non-blocking)
+    try:
+        save_session_mapping(session_id, email)
+    except Exception:
+        logger.exception("Failed to save session mapping after google login")
+
     try:
         create_session_record(request, email, session_id)
         update_session_record(session_id, "google_login_success")
@@ -225,6 +239,13 @@ def logout():
         except Exception as e:
             logger.exception(f"Failed to update session record for logout: {e}")
     # MERGED LOGIC FROM OLD authentication.py — END
+
+    # Remove server-side mapping (non-blocking)
+    if session_id:
+        try:
+            delete_session_mapping(session_id)
+        except Exception:
+            logger.exception(f"Failed to delete session mapping for {session_id}")
 
     session.clear()
     return redirect(url_for("auth.home_page"))
