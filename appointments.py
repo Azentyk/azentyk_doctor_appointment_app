@@ -29,3 +29,4 @@ def list_appointments():
     except Exception as e:
         logger.exception("Failed to fetch appointments")
         return jsonify({"error": "server_error"}), 500
+
