@@ -1,15 +1,18 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 import hashlib
 import pandas as pd
 from pymongo import MongoClient
 import logging
-from typing import Optional, List, Dict,Tuple
 
 # Initialize MongoDB client
 # client = MongoClient("mongodb://localhost:27017/")
 # client = MongoClient("mongodb+srv://azentyk:azentyk123@cluster0.b9aaq47.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-client = MongoClient("mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@",tls=True, tlsAllowInvalidCertificates=False)
+client = MongoClient(
+    "mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@",
+    tls=True,
+    tlsAllowInvalidCertificates=False,
+)
 db = client["patient_db"]
 
 # Collections
@@ -17,6 +20,9 @@ patient_information_details_table_collection = db["patient_information_details_t
 patient_chat_table_collection = db["patient_chat_table"]
 chat_collection = db["patient_each_chat_table"]
 patient_credentials_collection = db["patient_credentials"]
+
+# NEW: sessions collection for mapping session_id -> email
+sessions_collection = db["sessions"]
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +224,39 @@ def get_user_appointments_by_email(email: str) -> List[Dict]:
         logger.exception(f"Error fetching appointments for {email}: {e}")
         return []
 
+# ---------- NEW: session mapping helpers ----------
+def save_session_mapping(session_id: str, email: str) -> None:
+    """Store or update mapping from session_id -> email."""
+    try:
+        now = datetime.now().isoformat()
+        sessions_collection.update_one(
+            {"session_id": session_id},
+            {"$set": {"email": email, "updated_at": now, "created_at": now}},
+            upsert=True,
+        )
+        logger.info(f"Saved session mapping for {session_id} -> {email}")
+    except Exception as e:
+        logger.exception(f"Failed to save session mapping: {e}")
+
+def get_email_from_session_id(session_id: str) -> Optional[str]:
+    """Return email for given session_id, or None."""
+    try:
+        doc = sessions_collection.find_one({"session_id": session_id})
+        if doc:
+            return doc.get("email")
+        return None
+    except Exception as e:
+        logger.exception(f"Failed to lookup session mapping for {session_id}: {e}")
+        return None
+
+def delete_session_mapping(session_id: str) -> None:
+    """Remove mapping when user logs out (optional)."""
+    try:
+        sessions_collection.delete_one({"session_id": session_id})
+        logger.info(f"Deleted session mapping for {session_id}")
+    except Exception as e:
+        logger.exception(f"Failed to delete session mapping: {e}")
+
 def update_appointment_status(appointment_id: str, new_status: str) -> dict:
     """
     Update the appointment_status for a patient record in MongoDB
@@ -242,4 +281,3 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
     else:
 
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
-
