@@ -8,7 +8,7 @@ import logging
 
 # Initialize MongoDB client
 client = MongoClient(
-    "our mongo db URl in this place",
+    "mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@",
     tls=True,
     tlsAllowInvalidCertificates=False,
 )
@@ -212,3 +212,4 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
         return {"success": False, "message": f"Appointment {appointment_id} already has status '{new_status}'"}
     else:
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
+
