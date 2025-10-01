@@ -212,4 +212,3 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
         return {"success": False, "message": f"Appointment {appointment_id} already has status '{new_status}'"}
     else:
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
-
