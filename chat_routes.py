@@ -127,19 +127,36 @@ def chat(session_id):
                     "use existing one", "existing", "my account email", "yes"
                 ]
                 return any(t in lowered for t in triggers)
+                
 
-            # 4) Normalize and fill 'mail' (accept 'email' too)
+            # 4) Smartly fill 'mail' from session or user prompt
             mail_val = patient_data.get("mail") or patient_data.get("email")
-            if _looks_like_use_existing(mail_val):
+
+            # Case 1: Extractor found no email. Use the authenticated session email by default.
+            if not mail_val:
                 if auth_email:
-                    logger.debug(f"[{session_id}] Replacing placeholder mail '{mail_val}' with auth email '{auth_email}'")
+                    logger.debug(f"[{session_id}] Mail not found in extraction, using authenticated session email: {auth_email}")
                     patient_data['mail'] = auth_email
                 else:
-                    logger.warning(f"[{session_id}] Mail placeholder present but no authenticated email to fallback to: {mail_val}")
+                    # This is the original error path, now it only triggers if no session exists AND no email was provided
+                    logger.warning(f"[{session_id}] Mail not found in extraction and no authenticated email session exists.")
+                    return jsonify({"response": "Missing email. Please provide your email or confirm you want to use your account email."})
+
+            # Case 2: User said "use my account email" or similar.
+            elif _looks_like_use_existing(mail_val):
+                if auth_email:
+                    logger.debug(f"[{session_id}] User requested existing mail, using auth email '{auth_email}'")
+                    patient_data['mail'] = auth_email
+                else:
+                    logger.warning(f"[{session_id}] User requested existing mail but no auth session found.")
                     return jsonify({"response": "You asked to use your existing email but I couldn't find your account. Please provide your email."})
+
+            # Case 3: An explicit email was extracted, ensure it's in the 'mail' key.
             else:
-                if mail_val and "mail" not in patient_data:
+                if "mail" not in patient_data:
                     patient_data['mail'] = mail_val
+
+
 
             # 5) Fill username and phone from contact info if missing or placeholder
             username_val = patient_data.get("username")
