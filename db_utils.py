@@ -72,7 +72,7 @@ def authenticate_user(email: str, password: str) -> bool:
         return False
 
 def register_user(firstname: str, email: str, phone: str, country: str,
-                 state: str, location: str, city: str, password: str) -> Optional[str]:
+                  state: str, location: str, city: str, password: str) -> Optional[str]:
     """Register a new user in the database"""
     try:
         if patient_credentials_collection.find_one({"email": email}):
@@ -212,3 +212,27 @@ def update_appointment_status(appointment_id: str, new_status: str) -> dict:
         return {"success": False, "message": f"Appointment {appointment_id} already has status '{new_status}'"}
     else:
         return {"success": False, "message": f"No appointment found with ID {appointment_id}"}
+
+
+# --- NEW FUNCTION FOR PASSWORD RESET ---
+def update_user_password(email: str, new_password: str) -> bool:
+    """Finds a user by email and updates their password with a newly hashed one."""
+    try:
+        # Use the existing hash_password function for consistency
+        hashed_password = hash_password(new_password)
+        
+        result = patient_credentials_collection.update_one(
+            {"email": email},
+            {"$set": {"password": hashed_password}}
+        )
+        
+        if result.modified_count > 0:
+            logger.info(f"Successfully updated password for user {email}")
+            return True
+        else:
+            # This could mean the user was not found or the password was the same
+            logger.warning(f"Could not update password for {email}. User not found or password unchanged.")
+            return False
+    except Exception as e:
+        logger.error(f"Error updating password for {email}: {e}")
+        return False
