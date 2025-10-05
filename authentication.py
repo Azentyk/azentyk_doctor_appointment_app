@@ -1,4 +1,4 @@
-# authentication.py -- changes made for app
+# authentication.py
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, render_template_string
 import uuid
 import logging
@@ -330,6 +330,7 @@ def reset_password_page():
         else:
             error_template = "<h2>Error</h2><p>An error occurred while updating your password. Please try again.</p>"
             return render_template_string(error_template), 500
+
 
 
 
