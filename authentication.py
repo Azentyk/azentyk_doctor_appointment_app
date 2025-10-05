@@ -1,4 +1,4 @@
-# authentication.py
+# authentication.py -- changes made for app
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 import uuid
 import logging
@@ -29,38 +29,44 @@ def home_page():
     logger.info("Home page accessed")
     return render_template("home.html")
 
-@auth_bp.route("/register", methods=["GET", "POST"])
+# --- MODIFIED FOR FLUTTER APP ---
+@auth_bp.route("/register", methods=["POST"])
 def register_page():
-    if request.method == "GET":
-        logger.info("Register page accessed")
-        return render_template("register.html")
+    """
+    API endpoint for user registration.
+    Accepts a JSON payload and returns a JSON response.
+    """
+    if not request.is_json:
+        logger.warning(f"Registration attempt failed: Request is not JSON from IP {request.remote_addr}")
+        return jsonify({"error": "Invalid request format. Must be JSON."}), 400
 
-    firstname = request.form.get("firstname")
-    email = request.form.get("email")
-    phone = request.form.get("phone")
-    country = request.form.get("country")
-    state = request.form.get("state")
-    location = request.form.get("location")
-    city = request.form.get("city")
-    password = request.form.get("password")
+    data = request.get_json()
+
+    # Get data from the JSON payload
+    firstname = data.get("firstname")
+    email = data.get("email")
+    phone = data.get("phone")
+    country = data.get("country")
+    state = data.get("state")
+    location = data.get("location")
+    city = data.get("city")
+    password = data.get("password")
+
+    # Basic validation
+    if not all([firstname, email, password]):
+        logger.warning(f"Registration attempt failed: Missing required fields from IP {request.remote_addr}")
+        return jsonify({"error": "Missing required fields: firstname, email, and password"}), 400
 
     error = register_user(firstname, email, phone, country, state, location, city, password)
 
     if error is None:
-        logger.info(f"Registration successful for {email} from IP {request.remote_addr}")
-        try:
-            update_session_record(None, "registration_success", {'email': email})
-        except Exception as e:
-            logger.exception(f"Failed to update session record for registration_success: {e}")
-        return redirect(url_for("auth.login_page"))
-
-    logger.warning(f"Registration failed for {email}. Reason: {error}.")
-    try:
-        update_session_record(None, "registration_failed", {'email': email, 'reason': error})
-    except Exception as e:
-        logger.exception(f"Failed to update session record for registration_failed: {e}")
-    flash(error, "error")
-    return render_template("register.html", message=error)
+        logger.info(f"API Registration successful for {email} from IP {request.remote_addr}")
+        # Return a JSON success message with a 201 Created status code
+        return jsonify({"message": "Registration successful"}), 201
+    else:
+        logger.warning(f"API Registration failed for {email}. Reason: {error}.")
+        # Return a JSON error message with a 400 Bad Request status code
+        return jsonify({"error": error}), 400
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login_page():
