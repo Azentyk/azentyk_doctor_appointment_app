@@ -29,8 +29,8 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # --- HARDCODED CREDENTIALS FOR PASSWORD RESET ---
-MAIL_USERNAME = "your-email@gmail.com"
-MAIL_APP_PASSWORD = "your-16-digit-app-password"
+MAIL_USERNAME = "noreply.azentyk@gmail.com"
+MAIL_APP_PASSWORD = "focuckhbyshcoisx"
 # ------------------------------------------------
 
 auth_bp = Blueprint("auth", __name__, template_folder="templates")
@@ -327,3 +327,4 @@ def reset_password_page():
         else:
             error_template = "<h2>Error</h2><p>An error occurred while updating your password. Please try again.</p>"
             return render_template_string(error_template), 500
+
