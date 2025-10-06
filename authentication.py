@@ -1,4 +1,4 @@
-# authentication.py
+# authentication.py -- changes made for app
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, render_template_string
 import uuid
 import logging
@@ -15,7 +15,7 @@ from db_utils import (
     patient_credentials_collection, # IMPORT THIS
     save_session_mapping,
     delete_session_mapping,
-    update_user_password # <-- NEW IMPORT
+    update_user_password 
 )
 from logger import setup_logging
 
@@ -29,15 +29,14 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # --- HARDCODED CREDENTIALS FOR PASSWORD RESET ---
-# IMPORTANT: Replace these with your actual credentials for testing.
-MAIL_USERNAME = "noreply.azentyk@gmail.com"
-MAIL_APP_PASSWORD = "focuckhbyshcoisx"
+MAIL_USERNAME = "your-email@gmail.com"
+MAIL_APP_PASSWORD = "your-16-digit-app-password"
 # ------------------------------------------------
 
 auth_bp = Blueprint("auth", __name__, template_folder="templates")
 
 # --- NEW COLLECTION FOR STORING RESET TOKENS ---
-from db_utils import db # Assuming 'db' is your MongoDB client from db_utils
+from db_utils import db 
 password_resets_collection = db["password_resets"]
 # ------------------------------------------------
 
@@ -46,45 +45,50 @@ def home_page():
     logger.info("Home page accessed")
     return render_template("home.html")
 
-# --- MODIFIED FOR FLUTTER APP ---
-@auth_bp.route("/register", methods=["POST"])
+# --- MODIFIED TO HANDLE BOTH WEB AND APP ---
+@auth_bp.route("/register", methods=["GET", "POST"]) # <-- FIX: Added "GET"
 def register_page():
     """
-    API endpoint for user registration.
-    Accepts a JSON payload and returns a JSON response.
+    Handles user registration.
+    - GET: Serves the registration HTML page for web browsers.
+    - POST: Handles API registration from the Flutter app.
     """
-    if not request.is_json:
-        logger.warning(f"Registration attempt failed: Request is not JSON from IP {request.remote_addr}")
-        return jsonify({"error": "Invalid request format. Must be JSON."}), 400
+    # Handle web browser request to see the page
+    if request.method == 'GET':
+        logger.info("Register page accessed from web")
+        return render_template("register.html") # Assumes you have a register.html template
 
-    data = request.get_json()
+    # Handle API request from Flutter app
+    if request.method == 'POST':
+        if not request.is_json:
+            logger.warning(f"Registration attempt failed: Request is not JSON from IP {request.remote_addr}")
+            return jsonify({"error": "Invalid request format. Must be JSON."}), 400
 
-    # Get data from the JSON payload
-    firstname = data.get("firstname")
-    email = data.get("email")
-    phone = data.get("phone")
-    country = data.get("country")
-    state = data.get("state")
-    location = data.get("location")
-    city = data.get("city")
-    password = data.get("password")
+        data = request.get_json()
+        firstname = data.get("firstname")
+        email = data.get("email")
+        phone = data.get("phone")
+        country = data.get("country")
+        state = data.get("state")
+        location = data.get("location")
+        city = data.get("city")
+        password = data.get("password")
 
-    # Basic validation
-    if not all([firstname, email, password]):
-        logger.warning(f"Registration attempt failed: Missing required fields from IP {request.remote_addr}")
-        return jsonify({"error": "Missing required fields: firstname, email, and password"}), 400
+        if not all([firstname, email, password]):
+            logger.warning(f"Registration attempt failed: Missing required fields from IP {request.remote_addr}")
+            return jsonify({"error": "Missing required fields: firstname, email, and password"}), 400
 
-    error = register_user(firstname, email, phone, country, state, location, city, password)
+        error = register_user(firstname, email, phone, country, state, location, city, password)
 
-    if error is None:
-        logger.info(f"API Registration successful for {email} from IP {request.remote_addr}")
-        # Return a JSON success message with a 201 Created status code
-        return jsonify({"message": "Registration successful"}), 201
-    else:
-        logger.warning(f"API Registration failed for {email}. Reason: {error}.")
-        # Return a JSON error message with a 400 Bad Request status code
-        return jsonify({"error": error}), 400
+        if error is None:
+            logger.info(f"API Registration successful for {email} from IP {request.remote_addr}")
+            return jsonify({"message": "Registration successful"}), 201
+        else:
+            logger.warning(f"API Registration failed for {email}. Reason: {error}.")
+            return jsonify({"error": error}), 400
 
+# (The rest of your authentication.py file remains exactly the same)
+# ... login_page, google_login, logout, forgot_password, etc. ...
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login_page():
     if request.method == "GET":
@@ -125,11 +129,6 @@ def login_page():
 # --- REWRITTEN GOOGLE LOGIN ROUTE ---
 @auth_bp.route("/google-login", methods=["POST"])
 def google_login():
-    """
-    Accepts POST with 'email' and 'firstname'.
-    Finds the user or creates them if they don't exist.
-    Returns session_id and their profile completion status.
-    """
     data = request.form
     email = data.get("email")
     firstname = data.get("firstname")
@@ -227,7 +226,6 @@ def logout():
 
 @auth_bp.route("/api/forgot-password", methods=["POST"])
 def forgot_password():
-    """Receives email from Flutter app or web JS and sends a reset link."""
     data = request.get_json()
     email = data.get("email")
     if not email:
@@ -281,7 +279,6 @@ def forgot_password():
 
 @auth_bp.route("/reset-password", methods=["GET", "POST"])
 def reset_password_page():
-    """Serves the web page for resetting the password."""
     if request.method == "GET":
         token = request.args.get('token')
         reset_request = password_resets_collection.find_one({"token": token})
