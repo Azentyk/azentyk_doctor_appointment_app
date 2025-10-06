@@ -46,24 +46,20 @@ def home_page():
     return render_template("home.html")
 
 # --- MODIFIED TO HANDLE BOTH WEB AND APP ---
-@auth_bp.route("/register", methods=["GET", "POST"]) # <-- FIX: Added "GET"
+@auth_bp.route("/register", methods=["GET", "POST"])
 def register_page():
     """
-    Handles user registration.
-    - GET: Serves the registration HTML page for web browsers.
-    - POST: Handles API registration from the Flutter app.
+    Handles user registration for both web and app.
+    - GET: Serves the registration HTML page.
+    - POST: Handles form data from web OR JSON from the app.
     """
-    # Handle web browser request to see the page
     if request.method == 'GET':
         logger.info("Register page accessed from web")
-        return render_template("register.html") # Assumes you have a register.html template
+        return render_template("register.html")
 
-    # Handle API request from Flutter app
-    if request.method == 'POST':
-        if not request.is_json:
-            logger.warning(f"Registration attempt failed: Request is not JSON from IP {request.remote_addr}")
-            return jsonify({"error": "Invalid request format. Must be JSON."}), 400
-
+    # --- THIS IS THE FIX ---
+    # Check if the request is JSON (from Flutter app) or form data (from web)
+    if request.is_json:
         data = request.get_json()
         firstname = data.get("firstname")
         email = data.get("email")
@@ -73,22 +69,42 @@ def register_page():
         location = data.get("location")
         city = data.get("city")
         password = data.get("password")
+    else: # It's form data from the website
+        data = request.form
+        firstname = data.get("firstname")
+        email = data.get("email")
+        phone = data.get("phone")
+        country = data.get("country")
+        state = data.get("state")
+        location = data.get("location")
+        city = data.get("city")
+        password = data.get("password")
 
-        if not all([firstname, email, password]):
-            logger.warning(f"Registration attempt failed: Missing required fields from IP {request.remote_addr}")
+    # The rest of the logic is the same for both
+    if not all([firstname, email, password]):
+        # Handle both web and API error responses
+        if request.is_json:
             return jsonify({"error": "Missing required fields: firstname, email, and password"}), 400
+        else:
+            flash("Missing required fields: firstname, email, and password", "error")
+            return redirect(url_for('auth.register_page'))
 
-        error = register_user(firstname, email, phone, country, state, location, city, password)
+    error = register_user(firstname, email, phone, country, state, location, city, password)
 
-        if error is None:
-            logger.info(f"API Registration successful for {email} from IP {request.remote_addr}")
+    if error is None:
+        if request.is_json:
             return jsonify({"message": "Registration successful"}), 201
         else:
-            logger.warning(f"API Registration failed for {email}. Reason: {error}.")
+            flash("Registration successful! Please log in.", "success")
+            return redirect(url_for('auth.login_page'))
+    else:
+        if request.is_json:
             return jsonify({"error": error}), 400
+        else:
+            flash(error, "error")
+            return redirect(url_for('auth.register_page'))
 
 # (The rest of your authentication.py file remains exactly the same)
-# ... login_page, google_login, logout, forgot_password, etc. ...
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login_page():
     if request.method == "GET":
