@@ -60,7 +60,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Left Intro Panel */
     .intro {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: #fff;
@@ -158,7 +157,6 @@
       color: #ffd700;
     }
 
-    /* Right Form Panel */
     .form-container {
       padding: 40px;
       display: flex;
@@ -194,18 +192,10 @@
       font-size: 14px;
     }
 
-    .message i {
-      font-size: 18px;
-    }
-
     form {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-    }
-
-    .form-group {
-      margin-bottom: 0;
     }
 
     .form-group.full-width {
@@ -236,11 +226,6 @@
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
       background: #fff;
-    }
-
-    input::placeholder {
-      color: var(--text-light);
-      opacity: 0.7;
     }
 
     .button-container {
@@ -316,74 +301,20 @@
       color: var(--primary);
     }
 
-    /* Responsive Design */
-    @media (max-width: 1024px) {
-      .container {
-        grid-template-columns: 1fr 1.5fr;
-      }
-      
-      .intro, .form-container {
-        padding: 30px;
-      }
-    }
-
     @media (max-width: 900px) {
-      .container {
-        grid-template-columns: 1fr;
-        max-width: 600px;
-      }
-      
-      .intro {
-        text-align: center;
-        padding: 40px 30px;
-      }
-      
-      .features li {
-        justify-content: center;
-      }
+      .container { grid-template-columns: 1fr; max-width: 600px; }
+      .intro { text-align: center; padding: 40px 30px; }
+      .features li { justify-content: center; }
     }
 
     @media (max-width: 640px) {
-      form {
-        grid-template-columns: 1fr;
-      }
-      
-      .button-container {
-        flex-direction: column;
-      }
-      
-      .intro h1 {
-        font-size: 24px;
-      }
-      
-      .form-container h1 {
-        font-size: 24px;
-      }
-      
-      .logo {
-        font-size: 24px;
-      }
-      
-      .logo i {
-        width: 40px;
-        height: 40px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .intro, .form-container {
-        padding: 25px 20px;
-      }
-      
-      .features li {
-        padding: 12px;
-      }
+      form { grid-template-columns: 1fr; }
+      .button-container { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Left Intro -->
     <div class="intro">
       <div class="intro-content">
         <div class="logo">
@@ -400,18 +331,11 @@
       </div>
     </div>
 
-    <!-- Right Register Form -->
-    <main class="form-container" role="main" aria-labelledby="register-heading">
-      <h1 id="register-heading">Create Your Account</h1>
+    <main class="form-container">
+      <h1>Create Your Account</h1>
       <p class="subheading">Join thousands of healthcare professionals using our platform</p>
 
-      {% if message %}
-        <div class="message">
-          <i class="fas fa-exclamation-circle"></i> {{ message }}
-        </div>
-      {% endif %}
-
-      <form method="post" action="/register" novalidate>
+      <form method="post" action="{{ url_for('auth.register_page') }}" novalidate>
         <div class="form-group">
           <label for="firstname">First Name</label>
           <input type="text" id="firstname" name="firstname" placeholder="First Name" required />
@@ -454,6 +378,9 @@
           <input type="text" id="city" name="city" placeholder="Your city" required />
         </div>
 
+        <!-- Hidden location field -->
+        <input type="hidden" id="location" name="location" value="" />
+
         <div class="form-group full-width">
           <label for="password">Password</label>
           <div class="password-container">
@@ -465,9 +392,9 @@
         </div>
 
         <div class="form-group full-width">
-          <label for="confirmPassword">Confirm Password</label>
+          <label for="confirm_password">Confirm Password</label>
           <div class="password-container">
-            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required />
+            <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm your password" required />
             <span class="toggle-password" id="toggleConfirmPassword">
               <i class="fas fa-eye"></i>
             </span>
@@ -478,68 +405,51 @@
           <button type="submit" class="btn btn--primary">
             <i class="fas fa-user-plus"></i> Create Account
           </button>
-          <a href="/login" class="btn btn--outline">
+          <a href="{{ url_for('auth.login_page') }}" class="btn btn--outline">
             <i class="fas fa-sign-in-alt"></i> Sign In
           </a>
         </div>
       </form>
 
       <div class="footer">
-        <p>© 2025 Azentyk Medical AI. All rights reserved. <a href="/privacy" style="color: var(--primary); text-decoration: none;">Privacy Policy</a></p>
+        <p>© 2025 Azentyk Medical AI. All rights reserved.
+          <a href="/privacy" style="color: var(--primary); text-decoration: none;">Privacy Policy</a>
+        </p>
       </div>
     </main>
   </div>
 
   <script>
-    // Password visibility toggles
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
-    
     const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
     const confirmPasswordInput = document.getElementById('confirmPassword');
-    
+
     togglePassword.addEventListener('click', function() {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
-      
-      // Toggle eye icon
-      const eyeIcon = this.querySelector('i');
-      eyeIcon.classList.toggle('fa-eye');
-      eyeIcon.classList.toggle('fa-eye-slash');
-    });
-    
-    toggleConfirmPassword.addEventListener('click', function() {
-      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      confirmPasswordInput.setAttribute('type', type);
-      
-      // Toggle eye icon
-      const eyeIcon = this.querySelector('i');
-      eyeIcon.classList.toggle('fa-eye');
-      eyeIcon.classList.toggle('fa-eye-slash');
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      this.querySelector('i').classList.toggle('fa-eye');
+      this.querySelector('i').classList.toggle('fa-eye-slash');
     });
 
-    // Form validation
+    toggleConfirmPassword.addEventListener('click', function() {
+      const type = confirmPasswordInput.type === 'password' ? 'text' : 'password';
+      confirmPasswordInput.type = type;
+      this.querySelector('i').classList.toggle('fa-eye');
+      this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+
     document.querySelector('form').addEventListener('submit', function(e) {
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
-      
       if (password !== confirmPassword) {
         e.preventDefault();
         const errorDiv = document.createElement('div');
         errorDiv.className = 'message';
         errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Passwords do not match';
-        
-        // Remove any existing error message
         const existingError = document.querySelector('.message');
-        if (existingError) {
-          existingError.remove();
-        }
-        
-        // Insert the error message
-        const form = document.querySelector('form');
-        form.insertBefore(errorDiv, form.firstChild);
-        
-        // Add focus to the password field
+        if (existingError) existingError.remove();
+        this.insertBefore(errorDiv, this.firstChild);
         document.getElementById('password').focus();
       }
     });
