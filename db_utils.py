@@ -1,4 +1,3 @@
-# db_utils.py
 from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 import hashlib
@@ -236,3 +235,4 @@ def update_user_password(email: str, new_password: str) -> bool:
     except Exception as e:
         logger.error(f"Error updating password for {email}: {e}")
         return False
+
