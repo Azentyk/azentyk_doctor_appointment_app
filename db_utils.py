@@ -4,10 +4,12 @@ import hashlib
 import pandas as pd
 from pymongo import MongoClient
 import logging
+import time
+import random
 
 # Initialize MongoDB client
 client = MongoClient(
-    "mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@",
+    "mongodb://azentyk-doctor-appointment-app-server:ROtcf6VzE2Jj2Etn0D3QY9LbrSTs4MEgld2hynMw3R46gl8cuL1D70qvx4DjQvogoyBDVO2z1MJxACDb04M0BA==@azentyk-doctor-appointment-app-server.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@azentyk-doctor-appointment-app-server@", # Your MongoDB connection string
     tls=True,
     tlsAllowInvalidCertificates=False,
 )
@@ -28,6 +30,7 @@ def init_db():
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
+# ... (all your existing functions like load_users_df, authenticate_user, etc. remain unchanged) ...
 def load_users_df() -> pd.DataFrame:
     try:
         cursor = patient_credentials_collection.find({})
@@ -236,3 +239,37 @@ def update_user_password(email: str, new_password: str) -> bool:
         logger.error(f"Error updating password for {email}: {e}")
         return False
 
+# --- 🚀 NEW FUNCTIONS FOR PUSH NOTIFICATIONS 🚀 ---
+
+def update_user_fcm_token(email: str, fcm_token: str) -> None:
+    """
+    Saves or updates the FCM token for a given user.
+    This will be called from the new API endpoint.
+    """
+    try:
+        patient_credentials_collection.update_one(
+            {"email": email},
+            {"$set": {"fcm_token": fcm_token}},
+            upsert=False # Do not create a new user if one doesn't exist
+        )
+        logger.info(f"Updated FCM token for user {email}")
+    except Exception as e:
+        logger.error(f"Error updating FCM token for {email}: {e}")
+
+def get_fcm_token_for_user(email: str) -> Optional[str]:
+    """
+    Retrieves the FCM token for a given user.
+    This will be called from the chat logic before sending a notification.
+    """
+    try:
+        user = patient_credentials_collection.find_one(
+            {"email": email},
+            {"fcm_token": 1, "_id": 0} # Projection to only get the fcm_token
+        )
+        if user and "fcm_token" in user:
+            return user["fcm_token"]
+        else:
+            return None
+    except Exception as e:
+        logger.error(f"Error retrieving FCM token for {email}: {e}")
+        return None
